@@ -1,7 +1,7 @@
-# NotepadLite
+# Mattpad
 
 <p align="center">
-  <img src="notepad_plus_pro.ico" alt="Notepad Plus Pro" width="128">
+  <img src="mattpad.ico" alt="Mattpad" width="128">
 </p>
 
 <p align="center">
@@ -75,7 +75,7 @@
 2. Download or clone this repository
 3. Run the script:
    ```bash
-   python notepad_plus_pro.py
+   python mattpad.py
    ```
    Dependencies are installed automatically on first run.
 
@@ -84,7 +84,7 @@
 1. Download or clone this repository
 2. Double-click `build_exe.bat`
 3. Wait for the build to complete (~2-5 minutes)
-4. Find `NotepadPlusPro.exe` in the `dist` folder
+4. Find `Mattpad.exe` in the `dist` folder
 
 The portable exe requires no installation - just copy and run anywhere!
 
@@ -110,25 +110,25 @@ build_exe.bat
 pip install pyinstaller customtkinter pillow chardet requests
 
 # Build the executable
-pyinstaller --onefile --windowed --name "NotepadPlusPro" ^
-    --icon=notepad_plus_pro.ico ^
+pyinstaller --onefile --windowed --name "Mattpad" ^
+    --icon=mattpad.ico ^
     --collect-all customtkinter ^
-    --add-data "notepad_plus_pro.ico;." ^
-    notepad_plus_pro.py
+    --add-data "mattpad.ico;." ^
+    mattpad.py
 ```
 
 ### Using the Spec File
 
 ```bash
 pip install pyinstaller customtkinter pillow chardet requests
-pyinstaller NotepadPlusPro.spec
+pyinstaller Mattpad.spec
 ```
 
 ### Output
 The compiled executable will be in the `dist` folder:
 ```
 dist/
-  └── NotepadPlusPro.exe  (~50-100 MB)
+  └── Mattpad.exe  (~50-100 MB)
 ```
 
 ---
@@ -217,7 +217,7 @@ Syntax highlighting for 50+ languages including:
 
 ## Configuration
 
-Settings are stored in `~/.notepad_plus_pro/settings.json` and include:
+Settings are stored in `~/.mattpad/settings.json` and include:
 - Theme preference
 - UI scale
 - Default file extension
@@ -227,7 +227,7 @@ Settings are stored in `~/.notepad_plus_pro/settings.json` and include:
 - Recent files list
 - Clipboard history
 
-Session data (open tabs, content) is cached in `~/.notepad_plus_pro/cache/`
+Session data (open tabs, content) is cached in `~/.mattpad/cache/`
 
 ---
 
@@ -236,7 +236,7 @@ Session data (open tabs, content) is cached in `~/.notepad_plus_pro/cache/`
 ### Build Fails
 Try the alternative command:
 ```bash
-pyinstaller --onefile --windowed --name "NotepadPlusPro" --collect-all customtkinter notepad_plus_pro.py
+pyinstaller --onefile --windowed --name "Mattpad" --collect-all customtkinter mattpad.py
 ```
 
 ### Missing Dependencies
@@ -246,7 +246,7 @@ pip install customtkinter pillow chardet requests openai anthropic
 ```
 
 ### Antivirus Warning
-Some antivirus software flags PyInstaller executables. Add an exception for `NotepadPlusPro.exe` or the `dist` folder.
+Some antivirus software flags PyInstaller executables. Add an exception for `Mattpad.exe` or the `dist` folder.
 
 ### Dark Title Bar Not Working
 Dark title bar requires Windows 10 version 20H1 or later. On older versions, the system theme is used.
