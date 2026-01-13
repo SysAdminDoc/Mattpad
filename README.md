@@ -1,7 +1,9 @@
 # Mattpad
 
 <p align="center">
-  <img src="mattpad.ico" alt="Mattpad" width="128">
+
+<img width="128" height="128" alt="mattpad" src="https://github.com/user-attachments/assets/efcc4354-6eb3-4fc1-b3c3-ee284037c09e" />
+
 </p>
 
 <p align="center">
