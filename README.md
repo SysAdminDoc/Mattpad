@@ -1,4 +1,4 @@
-# Notepad Plus Pro
+# NotepadLite
 
 <p align="center">
   <img src="notepad_plus_pro.ico" alt="Notepad Plus Pro" width="128">
