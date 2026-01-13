@@ -6,66 +6,7 @@
 
 </p>
 
-<p align="center">
-  <strong>A professional-grade text editor with auto-save, cloud sync, AI integration, and 50+ language syntax highlighting.</strong>
-</p>
-
-<p align="center">
-  <a href="#features">Features</a> •
-  <a href="#installation">Installation</a> •
-  <a href="#building-from-source">Build</a> •
-  <a href="#usage">Usage</a> •
-  <a href="#keyboard-shortcuts">Shortcuts</a>
-</p>
-
----
-
-## Features
-
-### 🎨 Modern Dark Interface
-- **7 Built-in Themes**: GitHub Dark, Monokai Pro, Dracula, Nord, One Dark, Solarized Dark, Gruvbox
-- **Dark Title Bar**: Native Windows 10/11 dark mode support
-- **Scalable UI**: 100% to 200% scaling for high-DPI displays
-- **Code Minimap**: VS Code-style document overview
-
-### 💾 Never Lose Your Work
-- **Auto-Save Cache**: Automatically saves every 10 seconds locally
-- **Session Restore**: Reopens all tabs exactly where you left off
-- **No Save Prompts**: Just close the window - your work is always preserved
-- **External Change Detection**: Prompts to reload when files change outside the editor
-
-### ☁️ Cloud Sync
-- **GitHub Integration**: Sync files to any GitHub repository
-- **Google Drive Integration**: One-click OAuth authentication
-- **Automatic Sync**: Background sync every 5 minutes
-
-### 🤖 AI Integration
-- **Multiple Providers**: OpenAI, Anthropic (Claude), Ollama (local)
-- **Built-in Prompts**: Explain, improve, fix bugs, add comments, translate, and more
-- **Custom Prompts**: Write your own AI instructions
-- **Context Menu**: Right-click to access AI features
-
-### ✨ Editor Features
-- **50+ Languages**: Syntax highlighting for Python, JavaScript, PowerShell, Batch, C++, Rust, Go, and many more
-- **Find & Replace**: With regex support
-- **Find in Files**: Search across entire directories
-- **Clipboard History**: Access your last 50 copied items (Ctrl+Shift+V)
-- **Line Numbers & Bookmarks**: Click to toggle bookmarks
-- **Bracket Matching**: Automatic highlight and auto-close
-- **Current Line Highlight**: Always know where your cursor is
-- **Word Wrap Toggle**: View menu or settings
-
-### 📁 File Management
-- **Multi-Tab Interface**: Drag and drop to reorder tabs
-- **File Tree Sidebar**: Browse and open files easily
-- **Recent Files**: Quick access to recently opened files
-- **Default Extension**: Set your preferred file type (.ps1, .bat, .py, etc.)
-
-### 🖱️ Quality of Life
-- **Middle-Click Scroll**: Browser-style auto-scroll
-- **Click Tab Bar**: Click empty space to create new tab
-- **Maximized by Default**: Opens full screen
-- **Zoom**: Ctrl+Plus/Minus to adjust font size
+Mattpad is a cache-first, multi-tab text editor built with CustomTkinter that removes save nagging by continuously auto-saving tab content to a local session cache. It supports modern editor UX including themes, minimap, line numbers, find/replace with regex, find-in-files, clipboard history, and middle-click auto-scroll. Optional cloud sync mirrors tab content to GitHub or Google Drive on a timer, and built-in AI actions can rewrite or explain selected text via OpenAI, Anthropic, or local Ollama, all accessible from the context menu.
 
 ---
 
