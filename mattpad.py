@@ -92,11 +92,17 @@ try:
 except ImportError:
     CHARDET_AVAILABLE = False
 
+# Spellchecker - with fallback to embedded dictionary
+SPELLCHECK_AVAILABLE = False
+_EXTERNAL_SPELLCHECK = False
+
 try:
-    from spellchecker import SpellChecker
+    from spellchecker import SpellChecker as ExternalSpellChecker
+    _EXTERNAL_SPELLCHECK = True
     SPELLCHECK_AVAILABLE = True
 except ImportError:
-    SPELLCHECK_AVAILABLE = False
+    ExternalSpellChecker = None
+    # Will use embedded fallback
 
 try:
     import keyring
@@ -222,6 +228,10 @@ class Spacing:
     XL = 20  # Extra large - major sections
     XXL = 28 # Double extra large - dialogs
 
+def sp(value: int, scale: float) -> int:
+    """Scale a pixel value by UI scale factor"""
+    return int(value * scale)
+
 # File type icons (Unicode symbols that scale well)
 FILE_ICONS = {
     ".py": "🐍", ".pyw": "🐍", ".js": "📜", ".jsx": "⚛", ".ts": "📘", ".tsx": "⚛",
@@ -295,12 +305,26 @@ class Theme:
     git_added: str = "#3fb950"
     git_modified: str = "#d29922"
     git_deleted: str = "#f85149"
-    # Tabs
-    tab_active: str = "#161b22"
-    tab_inactive: str = "#0d1117"
-    tab_modified: str = "#d29922"
+    # Tabs - comprehensive
+    tab_bar_bg: str = "#0d1117"  # Tab bar background
+    tab_active: str = "#161b22"  # Active tab background
+    tab_inactive: str = "#0d1117"  # Inactive tab background
+    tab_hover: str = "#21262d"  # Tab hover background
+    tab_text_active: str = "#e6edf3"  # Active tab text
+    tab_text_inactive: str = "#8b949e"  # Inactive tab text
+    tab_border: str = "#30363d"  # Tab border color
+    tab_modified: str = "#d29922"  # Modified indicator color
+    tab_close_hover: str = "#f85149"  # Close button hover
+    # Other UI
     minimap_viewport: str = "#ffffff15"
     fold_gutter: str = "#6e7681"
+    scrollbar_bg: str = "#21262d"
+    scrollbar_thumb: str = "#484f58"
+    button_bg: str = "#21262d"
+    button_hover: str = "#30363d"
+    input_bg: str = "#0d1117"
+    input_border: str = "#30363d"
+    dialog_bg: str = "#161b22"
 
 THEMES = {
     "Professional Dark": Theme(),
@@ -314,7 +338,10 @@ THEMES = {
         syntax_keyword="#cf222e", syntax_string="#0a3069", syntax_comment="#6e7781",
         syntax_number="#0550ae", syntax_function="#8250df", selection_bg="#b6d7ff",
         current_line="#f6f8fa", search_highlight="#fff8c5", misspelled="#cf222e",
-        bracket_match="#d0d0d0", tab_active="#ffffff", tab_inactive="#f5f5f5",
+        bracket_match="#d0d0d0", 
+        tab_bar_bg="#e5e5e5", tab_active="#ffffff", tab_inactive="#f0f0f0",
+        tab_hover="#d5d5d5", tab_text_active="#24292f", tab_text_inactive="#57606a",
+        tab_border="#d0d0d0", tab_modified="#9a6700", tab_close_hover="#cf222e",
     ),
     "Monokai": Theme(
         name="Monokai", ribbon_bg="#272822", ribbon_tab_bg="#1e1f1c", ribbon_tab_active="#3e3d32",
@@ -325,7 +352,9 @@ THEMES = {
         accent_red="#f92672", accent_purple="#ae81ff", syntax_keyword="#f92672",
         syntax_string="#e6db74", syntax_comment="#75715e", syntax_number="#ae81ff",
         syntax_function="#a6e22e", selection_bg="#49483e", current_line="#3e3d32",
-        tab_active="#3e3d32", tab_inactive="#272822",
+        tab_bar_bg="#1e1f1c", tab_active="#3e3d32", tab_inactive="#272822",
+        tab_hover="#49483e", tab_text_active="#f8f8f2", tab_text_inactive="#a6a69c",
+        tab_border="#49483e", tab_modified="#fd971f", tab_close_hover="#f92672",
     ),
     "Solarized Dark": Theme(
         name="Solarized Dark", ribbon_bg="#002b36", ribbon_tab_bg="#073642", ribbon_tab_active="#094656",
@@ -337,7 +366,10 @@ THEMES = {
         syntax_keyword="#859900", syntax_string="#2aa198", syntax_comment="#586e75",
         syntax_number="#d33682", syntax_function="#268bd2", selection_bg="#094656",
         current_line="#073642", search_highlight="#b58900", misspelled="#dc322f",
-        bracket_match="#586e75", tab_active="#073642", tab_inactive="#002b36",
+        bracket_match="#586e75",
+        tab_bar_bg="#073642", tab_active="#094656", tab_inactive="#002b36",
+        tab_hover="#586e75", tab_text_active="#93a1a1", tab_text_inactive="#657b83",
+        tab_border="#586e75", tab_modified="#b58900", tab_close_hover="#dc322f",
     ),
     "Solarized Light": Theme(
         name="Solarized Light", ribbon_bg="#eee8d5", ribbon_tab_bg="#fdf6e3", ribbon_tab_active="#ffffff",
@@ -347,7 +379,10 @@ THEMES = {
         accent_primary="#268bd2", accent_green="#859900", accent_orange="#cb4b16", accent_red="#dc322f",
         syntax_keyword="#859900", syntax_string="#2aa198", syntax_comment="#93a1a1",
         syntax_number="#d33682", syntax_function="#268bd2", selection_bg="#eee8d5",
-        current_line="#eee8d5", tab_active="#fdf6e3", tab_inactive="#eee8d5",
+        current_line="#eee8d5",
+        tab_bar_bg="#eee8d5", tab_active="#fdf6e3", tab_inactive="#eee8d5",
+        tab_hover="#d4cdb8", tab_text_active="#586e75", tab_text_inactive="#839496",
+        tab_border="#93a1a1", tab_modified="#cb4b16", tab_close_hover="#dc322f",
     ),
     "Dracula": Theme(
         name="Dracula", ribbon_bg="#282a36", ribbon_tab_bg="#21222c", ribbon_tab_active="#44475a",
@@ -358,7 +393,10 @@ THEMES = {
         accent_purple="#bd93f9", syntax_keyword="#ff79c6", syntax_string="#f1fa8c",
         syntax_comment="#6272a4", syntax_number="#bd93f9", syntax_function="#50fa7b",
         selection_bg="#44475a", current_line="#343746", search_highlight="#ffb86c",
-        misspelled="#ff5555", bracket_match="#6272a4", tab_active="#44475a", tab_inactive="#282a36",
+        misspelled="#ff5555", bracket_match="#6272a4",
+        tab_bar_bg="#21222c", tab_active="#44475a", tab_inactive="#282a36",
+        tab_hover="#6272a4", tab_text_active="#f8f8f2", tab_text_inactive="#6272a4",
+        tab_border="#44475a", tab_modified="#ffb86c", tab_close_hover="#ff5555",
     ),
     "Nord": Theme(
         name="Nord", ribbon_bg="#2e3440", ribbon_tab_bg="#3b4252", ribbon_tab_active="#434c5e",
@@ -369,7 +407,10 @@ THEMES = {
         accent_purple="#b48ead", syntax_keyword="#81a1c1", syntax_string="#a3be8c",
         syntax_comment="#616e88", syntax_number="#b48ead", syntax_function="#88c0d0",
         selection_bg="#434c5e", current_line="#3b4252", search_highlight="#ebcb8b",
-        misspelled="#bf616a", bracket_match="#4c566a", tab_active="#434c5e", tab_inactive="#2e3440",
+        misspelled="#bf616a", bracket_match="#4c566a",
+        tab_bar_bg="#3b4252", tab_active="#434c5e", tab_inactive="#2e3440",
+        tab_hover="#4c566a", tab_text_active="#eceff4", tab_text_inactive="#d8dee9",
+        tab_border="#4c566a", tab_modified="#ebcb8b", tab_close_hover="#bf616a",
     ),
     "One Dark": Theme(
         name="One Dark", ribbon_bg="#21252b", ribbon_tab_bg="#282c34", ribbon_tab_active="#2c313a",
@@ -380,7 +421,10 @@ THEMES = {
         accent_purple="#c678dd", syntax_keyword="#c678dd", syntax_string="#98c379",
         syntax_comment="#5c6370", syntax_number="#d19a66", syntax_function="#61afef",
         selection_bg="#3e4451", current_line="#2c313a", search_highlight="#d19a66",
-        misspelled="#e06c75", bracket_match="#4b5263", tab_active="#2c313a", tab_inactive="#21252b",
+        misspelled="#e06c75", bracket_match="#4b5263",
+        tab_bar_bg="#21252b", tab_active="#2c313a", tab_inactive="#21252b",
+        tab_hover="#3e4451", tab_text_active="#abb2bf", tab_text_inactive="#5c6370",
+        tab_border="#3e4451", tab_modified="#e5c07b", tab_close_hover="#e06c75",
     ),
     "Gruvbox Dark": Theme(
         name="Gruvbox Dark", ribbon_bg="#282828", ribbon_tab_bg="#1d2021", ribbon_tab_active="#3c3836",
@@ -391,7 +435,10 @@ THEMES = {
         accent_purple="#d3869b", syntax_keyword="#fb4934", syntax_string="#b8bb26",
         syntax_comment="#928374", syntax_number="#d3869b", syntax_function="#fabd2f",
         selection_bg="#504945", current_line="#3c3836", search_highlight="#fabd2f",
-        misspelled="#fb4934", bracket_match="#665c54", tab_active="#3c3836", tab_inactive="#282828",
+        misspelled="#fb4934", bracket_match="#665c54",
+        tab_bar_bg="#1d2021", tab_active="#3c3836", tab_inactive="#282828",
+        tab_hover="#504945", tab_text_active="#ebdbb2", tab_text_inactive="#a89984",
+        tab_border="#504945", tab_modified="#fabd2f", tab_close_hover="#fb4934",
     ),
     "Gruvbox Light": Theme(
         name="Gruvbox Light", ribbon_bg="#fbf1c7", ribbon_tab_bg="#f9f5d7", ribbon_tab_active="#ebdbb2",
@@ -401,7 +448,10 @@ THEMES = {
         accent_primary="#076678", accent_green="#79740e", accent_orange="#af3a03", accent_red="#9d0006",
         accent_purple="#8f3f71", syntax_keyword="#9d0006", syntax_string="#79740e",
         syntax_comment="#928374", syntax_number="#8f3f71", syntax_function="#b57614",
-        selection_bg="#d5c4a1", current_line="#ebdbb2", tab_active="#ebdbb2", tab_inactive="#fbf1c7",
+        selection_bg="#d5c4a1", current_line="#ebdbb2",
+        tab_bar_bg="#f9f5d7", tab_active="#ebdbb2", tab_inactive="#fbf1c7",
+        tab_hover="#d5c4a1", tab_text_active="#3c3836", tab_text_inactive="#665c54",
+        tab_border="#d5c4a1", tab_modified="#b57614", tab_close_hover="#9d0006",
     ),
     "Catppuccin Mocha": Theme(
         name="Catppuccin Mocha", ribbon_bg="#1e1e2e", ribbon_tab_bg="#181825", ribbon_tab_active="#313244",
@@ -412,7 +462,10 @@ THEMES = {
         accent_purple="#cba6f7", syntax_keyword="#cba6f7", syntax_string="#a6e3a1",
         syntax_comment="#6c7086", syntax_number="#fab387", syntax_function="#89b4fa",
         selection_bg="#45475a", current_line="#313244", search_highlight="#f9e2af",
-        misspelled="#f38ba8", bracket_match="#585b70", tab_active="#313244", tab_inactive="#1e1e2e",
+        misspelled="#f38ba8", bracket_match="#585b70",
+        tab_bar_bg="#181825", tab_active="#313244", tab_inactive="#1e1e2e",
+        tab_hover="#45475a", tab_text_active="#cdd6f4", tab_text_inactive="#a6adc8",
+        tab_border="#45475a", tab_modified="#f9e2af", tab_close_hover="#f38ba8",
     ),
     "Catppuccin Latte": Theme(
         name="Catppuccin Latte", ribbon_bg="#eff1f5", ribbon_tab_bg="#e6e9ef", ribbon_tab_active="#ccd0da",
@@ -422,7 +475,10 @@ THEMES = {
         accent_primary="#1e66f5", accent_green="#40a02b", accent_orange="#fe640b", accent_red="#d20f39",
         accent_purple="#8839ef", syntax_keyword="#8839ef", syntax_string="#40a02b",
         syntax_comment="#9ca0b0", syntax_number="#fe640b", syntax_function="#1e66f5",
-        selection_bg="#ccd0da", current_line="#e6e9ef", tab_active="#ccd0da", tab_inactive="#eff1f5",
+        selection_bg="#ccd0da", current_line="#e6e9ef",
+        tab_bar_bg="#e6e9ef", tab_active="#ccd0da", tab_inactive="#eff1f5",
+        tab_hover="#bcc0cc", tab_text_active="#4c4f69", tab_text_inactive="#6c6f85",
+        tab_border="#bcc0cc", tab_modified="#df8e1d", tab_close_hover="#d20f39",
     ),
     "Tokyo Night": Theme(
         name="Tokyo Night", ribbon_bg="#1a1b26", ribbon_tab_bg="#16161e", ribbon_tab_active="#24283b",
@@ -433,7 +489,10 @@ THEMES = {
         accent_purple="#bb9af7", syntax_keyword="#bb9af7", syntax_string="#9ece6a",
         syntax_comment="#565f89", syntax_number="#ff9e64", syntax_function="#7aa2f7",
         selection_bg="#414868", current_line="#24283b", search_highlight="#e0af68",
-        misspelled="#f7768e", bracket_match="#565f89", tab_active="#24283b", tab_inactive="#1a1b26",
+        misspelled="#f7768e", bracket_match="#565f89",
+        tab_bar_bg="#16161e", tab_active="#24283b", tab_inactive="#1a1b26",
+        tab_hover="#414868", tab_text_active="#c0caf5", tab_text_inactive="#a9b1d6",
+        tab_border="#414868", tab_modified="#e0af68", tab_close_hover="#f7768e",
     ),
     "Cobalt2": Theme(
         name="Cobalt2", ribbon_bg="#193549", ribbon_tab_bg="#122738", ribbon_tab_active="#1f4662",
@@ -444,7 +503,10 @@ THEMES = {
         accent_purple="#ff9d00", syntax_keyword="#ff9d00", syntax_string="#3ad900",
         syntax_comment="#0088ff", syntax_number="#ff628c", syntax_function="#ffc600",
         selection_bg="#1f4662", current_line="#1f4662", search_highlight="#ffc600",
-        misspelled="#ff628c", bracket_match="#305a78", tab_active="#1f4662", tab_inactive="#193549",
+        misspelled="#ff628c", bracket_match="#305a78",
+        tab_bar_bg="#122738", tab_active="#1f4662", tab_inactive="#193549",
+        tab_hover="#305a78", tab_text_active="#ffffff", tab_text_inactive="#afc4db",
+        tab_border="#234e6d", tab_modified="#ffc600", tab_close_hover="#ff628c",
     ),
     "High Contrast": Theme(
         name="High Contrast", ribbon_bg="#000000", ribbon_tab_bg="#000000", ribbon_tab_active="#1a1a1a",
@@ -456,7 +518,10 @@ THEMES = {
         syntax_keyword="#ff6600", syntax_string="#00ffff", syntax_comment="#888888",
         syntax_number="#ffff00", syntax_function="#00ff00", selection_bg="#0000ff",
         current_line="#1a1a1a", search_highlight="#ffff00", misspelled="#ff0000",
-        bracket_match="#444444", tab_active="#1a1a1a", tab_inactive="#000000",
+        bracket_match="#444444",
+        tab_bar_bg="#000000", tab_active="#1a1a1a", tab_inactive="#000000",
+        tab_hover="#333333", tab_text_active="#ffffff", tab_text_inactive="#cccccc",
+        tab_border="#444444", tab_modified="#ffff00", tab_close_hover="#ff0000",
     ),
 }
 
@@ -730,54 +795,332 @@ def detect_shell() -> str:
 # =============================================================================
 
 class SpellCheckManager:
+    """Bulletproof spell checker with multiple fallback mechanisms"""
+    
+    # Embedded dictionary with ~3000 most common English words
+    _EMBEDDED_WORDS = {
+        # Top 100 most common words
+        "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", "it", "for", "not", "on", "with",
+        "he", "as", "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her", "she",
+        "or", "an", "will", "my", "one", "all", "would", "there", "their", "what", "so", "up", "out", "if",
+        "about", "who", "get", "which", "go", "me", "when", "make", "can", "like", "time", "no", "just",
+        "him", "know", "take", "people", "into", "year", "your", "good", "some", "could", "them", "see",
+        "other", "than", "then", "now", "look", "only", "come", "its", "over", "think", "also", "back",
+        "after", "use", "two", "how", "our", "work", "first", "well", "way", "even", "new", "want",
+        "because", "any", "these", "give", "day", "most", "us",
+        # Verb forms
+        "is", "was", "are", "been", "has", "had", "were", "being", "am", "did", "does", "done", "doing",
+        "made", "got", "getting", "going", "went", "said", "says", "saying", "came", "coming", "took",
+        "taking", "seen", "seeing", "thought", "thinking", "knew", "knowing", "used", "using", "found",
+        "finding", "gave", "giving", "told", "telling", "asked", "asking", "worked", "working", "seemed",
+        "seeming", "left", "leaving", "called", "calling", "needed", "needing", "felt", "feeling", "became",
+        "becoming", "put", "putting", "kept", "keeping", "let", "began", "beginning", "shown", "showing",
+        # Common verbs
+        "help", "show", "hear", "play", "run", "move", "live", "believe", "hold", "bring", "happen",
+        "write", "provide", "sit", "stand", "lose", "pay", "meet", "include", "continue", "set", "learn",
+        "change", "lead", "understand", "watch", "follow", "stop", "create", "speak", "read", "allow",
+        "add", "spend", "grow", "open", "walk", "win", "offer", "remember", "love", "consider", "appear",
+        "buy", "wait", "serve", "die", "send", "expect", "build", "stay", "fall", "cut", "reach", "kill",
+        "remain", "suggest", "raise", "pass", "sell", "require", "report", "decide", "pull", "return",
+        "explain", "hope", "develop", "carry", "break", "receive", "agree", "support", "hit", "produce",
+        "eat", "cover", "catch", "draw", "choose", "cause", "point", "listen", "realize", "place",
+        # Common nouns
+        "man", "woman", "child", "world", "life", "hand", "part", "place", "case", "week", "company",
+        "system", "program", "question", "government", "number", "night", "point", "home", "water",
+        "room", "mother", "area", "money", "story", "fact", "month", "lot", "right", "study", "book",
+        "eye", "job", "word", "business", "issue", "side", "kind", "head", "house", "service", "friend",
+        "father", "power", "hour", "game", "line", "end", "member", "law", "car", "city", "community",
+        "name", "president", "team", "minute", "idea", "kid", "body", "information", "nothing", "ago",
+        "lead", "social", "whether", "back", "watch", "together", "follow", "around", "parent", "only",
+        "stop", "face", "anything", "create", "public", "already", "speak", "others", "read", "level",
+        "office", "door", "health", "person", "art", "war", "history", "party", "within", "grow",
+        "result", "moment", "ago", "reason", "early", "nation", "country", "problem", "group", "school",
+        # Common adjectives  
+        "good", "new", "first", "last", "long", "great", "little", "own", "other", "old", "right",
+        "big", "high", "different", "small", "large", "next", "early", "young", "important", "few",
+        "public", "bad", "same", "able", "real", "sure", "better", "best", "free", "full", "best",
+        "special", "easy", "clear", "recent", "certain", "personal", "open", "red", "difficult",
+        "available", "likely", "short", "single", "medical", "current", "wrong", "private", "past",
+        "foreign", "fine", "common", "poor", "natural", "significant", "similar", "hot", "dead",
+        "central", "happy", "serious", "ready", "simple", "left", "physical", "general", "environmental",
+        "financial", "blue", "democratic", "dark", "various", "entire", "close", "legal", "religious",
+        "cold", "final", "main", "green", "nice", "huge", "popular", "traditional", "cultural",
+        # Common adverbs
+        "up", "so", "out", "just", "now", "how", "then", "more", "also", "here", "well", "only",
+        "very", "even", "back", "there", "down", "still", "in", "as", "too", "when", "never", "really",
+        "most", "on", "why", "about", "over", "again", "where", "right", "before", "always", "together",
+        "often", "however", "away", "actually", "already", "later", "far", "today", "during", "enough",
+        "yet", "almost", "off", "certainly", "perhaps", "especially", "probably", "once", "ever",
+        "quickly", "finally", "simply", "sometimes", "clearly", "nearly", "suddenly", "recently",
+        "usually", "tonight", "instead", "perhaps", "directly", "indeed", "soon", "highly", "thus",
+        # Programming terms
+        "file", "code", "function", "class", "method", "variable", "string", "integer", "boolean",
+        "array", "list", "dictionary", "object", "module", "package", "library", "framework",
+        "database", "server", "client", "request", "response", "api", "url", "http", "https",
+        "html", "css", "javascript", "python", "java", "ruby", "php", "sql", "json", "xml",
+        "error", "exception", "debug", "test", "testing", "unit", "integration", "deploy",
+        "git", "commit", "push", "pull", "merge", "branch", "repository", "version", "release",
+        "import", "export", "input", "output", "parameter", "argument", "return", "value",
+        "null", "undefined", "true", "false", "none", "self", "this", "super", "static",
+        "public", "private", "protected", "abstract", "interface", "extends", "implements",
+        "async", "await", "promise", "callback", "event", "handler", "listener", "observer",
+        # UI/UX terms
+        "button", "click", "window", "frame", "panel", "menu", "toolbar", "statusbar", "dialog",
+        "modal", "popup", "dropdown", "checkbox", "radio", "slider", "input", "output", "form",
+        "label", "icon", "image", "logo", "banner", "header", "footer", "sidebar", "navbar",
+        "tab", "page", "screen", "view", "layout", "grid", "flex", "container", "wrapper",
+        "margin", "padding", "border", "width", "height", "top", "bottom", "left", "right",
+        "center", "align", "justify", "float", "position", "display", "visible", "hidden",
+        # Document terms
+        "document", "text", "paragraph", "sentence", "word", "letter", "character", "font",
+        "bold", "italic", "underline", "strikethrough", "heading", "title", "subtitle",
+        "chapter", "section", "index", "table", "contents", "appendix", "reference", "citation",
+        "footnote", "endnote", "bibliography", "glossary", "abstract", "summary", "conclusion",
+        # Common words continued
+        "thing", "something", "nothing", "everything", "anything", "someone", "anyone", "everyone",
+        "nobody", "somebody", "anybody", "everybody", "somewhere", "anywhere", "everywhere", "nowhere",
+        "here", "there", "where", "when", "why", "what", "which", "who", "whom", "whose", "how",
+        "much", "many", "few", "little", "more", "most", "less", "least", "some", "any", "no",
+        "every", "each", "either", "neither", "both", "all", "none", "other", "another", "such",
+        # Time words
+        "today", "tomorrow", "yesterday", "morning", "afternoon", "evening", "night", "midnight",
+        "noon", "week", "month", "year", "decade", "century", "millennium", "second", "minute",
+        "hour", "daily", "weekly", "monthly", "yearly", "annual", "spring", "summer", "autumn",
+        "fall", "winter", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+        "january", "february", "march", "april", "may", "june", "july", "august", "september",
+        "october", "november", "december",
+        # Numbers as words
+        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen",
+        "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+        "hundred", "thousand", "million", "billion", "trillion", "first", "second", "third",
+        "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
+        # Colors
+        "red", "orange", "yellow", "green", "blue", "purple", "pink", "brown", "black", "white",
+        "gray", "grey", "silver", "gold", "bronze", "cyan", "magenta", "violet", "indigo",
+        # Body parts
+        "head", "face", "eye", "eyes", "ear", "ears", "nose", "mouth", "tooth", "teeth", "tongue",
+        "lip", "lips", "chin", "cheek", "forehead", "neck", "shoulder", "arm", "elbow", "wrist",
+        "hand", "finger", "thumb", "nail", "chest", "back", "stomach", "hip", "leg", "knee",
+        "ankle", "foot", "feet", "toe", "heart", "brain", "lung", "liver", "kidney", "bone",
+        # Family
+        "family", "parent", "mother", "father", "mom", "dad", "child", "children", "son", "daughter",
+        "brother", "sister", "sibling", "grandparent", "grandmother", "grandfather", "grandma",
+        "grandpa", "grandchild", "grandson", "granddaughter", "aunt", "uncle", "cousin", "nephew",
+        "niece", "husband", "wife", "spouse", "partner", "boyfriend", "girlfriend", "friend",
+        # Places
+        "home", "house", "apartment", "building", "office", "school", "college", "university",
+        "hospital", "church", "store", "shop", "restaurant", "hotel", "airport", "station",
+        "park", "beach", "mountain", "forest", "river", "lake", "ocean", "sea", "island",
+        "city", "town", "village", "country", "state", "county", "region", "area", "district",
+        "street", "road", "highway", "bridge", "tunnel", "corner", "intersection", "address",
+        # Food and drink
+        "food", "drink", "water", "coffee", "tea", "milk", "juice", "soda", "beer", "wine",
+        "bread", "rice", "pasta", "meat", "beef", "pork", "chicken", "fish", "vegetable",
+        "fruit", "apple", "banana", "orange", "grape", "strawberry", "tomato", "potato",
+        "onion", "garlic", "pepper", "salt", "sugar", "butter", "cheese", "egg", "soup",
+        "salad", "sandwich", "pizza", "burger", "cake", "cookie", "chocolate", "candy",
+        # Animals
+        "animal", "dog", "cat", "bird", "fish", "horse", "cow", "pig", "sheep", "goat",
+        "chicken", "duck", "turkey", "rabbit", "mouse", "rat", "elephant", "lion", "tiger",
+        "bear", "wolf", "fox", "deer", "monkey", "snake", "frog", "turtle", "whale", "dolphin",
+        # Technology
+        "computer", "laptop", "desktop", "tablet", "phone", "smartphone", "device", "machine",
+        "software", "hardware", "program", "application", "app", "website", "internet", "network",
+        "wifi", "bluetooth", "cable", "wire", "battery", "charger", "adapter", "plug", "socket",
+        "screen", "monitor", "keyboard", "mouse", "printer", "scanner", "camera", "microphone",
+        "speaker", "headphone", "earphone", "memory", "storage", "disk", "drive", "folder",
+        # Additional common words
+        "hello", "goodbye", "please", "thank", "thanks", "sorry", "excuse", "welcome", "congratulations",
+        "yes", "no", "maybe", "ok", "okay", "sure", "fine", "great", "awesome", "amazing",
+        "beautiful", "wonderful", "excellent", "fantastic", "terrible", "horrible", "awful",
+        "interesting", "boring", "exciting", "surprising", "amazing", "incredible", "impossible",
+        "possible", "necessary", "important", "essential", "critical", "crucial", "vital",
+        "basic", "simple", "complex", "complicated", "difficult", "easy", "hard", "soft",
+        "fast", "slow", "quick", "rapid", "sudden", "gradual", "immediate", "instant",
+        "permanent", "temporary", "constant", "variable", "fixed", "flexible", "rigid",
+        "strong", "weak", "powerful", "effective", "efficient", "productive", "successful"
+    }
+    
     def __init__(self):
-        self.enabled = SPELLCHECK_AVAILABLE
-        self.spell = SpellChecker() if SPELLCHECK_AVAILABLE else None
+        self.spell = None
+        self.enabled = False
         self.custom_words: Set[str] = set()
+        self._word_set: Set[str] = set()
+        self._dict_file = CONFIG_DIR / "dictionary_cache.txt"
+        
+        # Try multiple initialization methods
+        self._initialize()
+        
+    def _initialize(self):
+        """Initialize spellchecker with multiple fallback methods"""
+        # Method 1: Try external pyspellchecker
+        if _EXTERNAL_SPELLCHECK and ExternalSpellChecker is not None:
+            try:
+                self.spell = ExternalSpellChecker()
+                self.enabled = True
+                logger.info("Spellcheck initialized with pyspellchecker")
+                self._load_custom_dictionary()
+                return
+            except Exception as e:
+                logger.warning(f"pyspellchecker failed: {e}")
+        
+        # Method 2: Try loading cached dictionary file
+        if self._load_cached_dictionary():
+            self.enabled = True
+            logger.info("Spellcheck initialized with cached dictionary")
+            self._load_custom_dictionary()
+            return
+        
+        # Method 3: Try downloading dictionary
+        if self._download_dictionary():
+            self.enabled = True
+            logger.info("Spellcheck initialized with downloaded dictionary")
+            self._load_custom_dictionary()
+            return
+        
+        # Method 4: Use embedded minimal dictionary
+        self._word_set = self._EMBEDDED_WORDS.copy()
+        self.enabled = True
+        logger.info("Spellcheck initialized with embedded dictionary")
         self._load_custom_dictionary()
+    
+    def _load_cached_dictionary(self) -> bool:
+        """Load dictionary from cache file"""
+        try:
+            if self._dict_file.exists():
+                content = self._dict_file.read_text(encoding='utf-8')
+                words = set(w.strip().lower() for w in content.split('\n') if w.strip())
+                if len(words) > 1000:  # Valid dictionary has many words
+                    self._word_set = words
+                    return True
+        except Exception as e:
+            logger.warning(f"Failed to load cached dictionary: {e}")
+        return False
+    
+    def _download_dictionary(self) -> bool:
+        """Download dictionary from the internet"""
+        # Multiple sources to try
+        urls = [
+            "https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt",
+            "https://raw.githubusercontent.com/first20hours/google-10000-english/master/20k.txt",
+        ]
+        
+        try:
+            import urllib.request
+            
+            for url in urls:
+                try:
+                    logger.info(f"Downloading spell check dictionary from {url}...")
+                    
+                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=15) as response:
+                        content = response.read().decode('utf-8')
+                    
+                    words = set(w.strip().lower() for w in content.split('\n') if w.strip() and len(w.strip()) > 1)
+                    
+                    if len(words) > 5000:  # Reduced threshold for smaller wordlists
+                        self._word_set = words
+                        # Cache for next time
+                        try:
+                            self._dict_file.parent.mkdir(parents=True, exist_ok=True)
+                            self._dict_file.write_text('\n'.join(sorted(words)), encoding='utf-8')
+                            logger.info(f"Cached {len(words)} words for spell check")
+                        except Exception:
+                            pass
+                        return True
+                except Exception as e:
+                    logger.warning(f"Failed to download from {url}: {e}")
+                    continue
+                    
+        except Exception as e:
+            logger.warning(f"Failed to download dictionary: {e}")
+        return False
         
     def _load_custom_dictionary(self):
+        """Load user's custom dictionary"""
         try:
             if CUSTOM_DICT_FILE.exists():
                 words = CUSTOM_DICT_FILE.read_text(encoding='utf-8').strip().split('\n')
                 self.custom_words = set(w.strip().lower() for w in words if w.strip())
+                # Add to word set for fallback mode
+                self._word_set.update(self.custom_words)
+                # Add to external spellchecker if available
                 if self.spell:
                     self.spell.word_frequency.load_words(list(self.custom_words))
         except Exception as e:
-            logger.error(f"Failed to load dictionary: {e}")
+            logger.error(f"Failed to load custom dictionary: {e}")
             
     def _save_custom_dictionary(self):
+        """Save user's custom dictionary"""
         try:
+            CUSTOM_DICT_FILE.parent.mkdir(parents=True, exist_ok=True)
             CUSTOM_DICT_FILE.write_text('\n'.join(sorted(self.custom_words)), encoding='utf-8')
         except Exception as e:
-            logger.error(f"Failed to save dictionary: {e}")
+            logger.error(f"Failed to save custom dictionary: {e}")
             
     def add_word(self, word: str):
+        """Add a word to custom dictionary"""
         word = word.strip().lower()
         if word:
             self.custom_words.add(word)
+            self._word_set.add(word)
             if self.spell:
                 self.spell.word_frequency.load_words([word])
             self._save_custom_dictionary()
             
     def remove_word(self, word: str):
-        self.custom_words.discard(word.strip().lower())
+        """Remove a word from custom dictionary"""
+        word = word.strip().lower()
+        self.custom_words.discard(word)
         self._save_custom_dictionary()
             
     def is_misspelled(self, word: str) -> bool:
-        if not self.enabled or not self.spell:
+        """Check if a word is misspelled"""
+        if not self.enabled:
             return False
         word = word.strip().lower()
         if not word or len(word) < 2 or not word.isalpha():
             return False
         if word in self.custom_words:
             return False
-        return word not in self.spell
+        
+        # Use external spellchecker if available
+        if self.spell:
+            try:
+                return word not in self.spell
+            except Exception:
+                pass
+        
+        # Fallback to word set
+        return word not in self._word_set
         
     def get_suggestions(self, word: str) -> List[str]:
-        if not self.enabled or not self.spell:
+        """Get spelling suggestions for a word"""
+        if not self.enabled:
             return []
-        return list(self.spell.candidates(word.lower()) or [])[:5]
+        
+        word = word.strip().lower()
+        
+        # Use external spellchecker if available
+        if self.spell:
+            try:
+                candidates = self.spell.candidates(word)
+                if candidates:
+                    return list(candidates)[:5]
+            except Exception:
+                pass
+        
+        # Simple fallback: find similar words
+        suggestions = []
+        for w in self._word_set:
+            if len(w) == len(word) and sum(a != b for a, b in zip(w, word)) == 1:
+                suggestions.append(w)
+            elif abs(len(w) - len(word)) == 1 and word in w or w in word:
+                suggestions.append(w)
+            if len(suggestions) >= 5:
+                break
+        return suggestions
 
 # =============================================================================
 # BACKUP MANAGER
@@ -1497,7 +1840,6 @@ class LineNumberCanvas(tk.Canvas):
         s = settings.ui_scale
         super().__init__(master, width=int(60*s), bg=THEME.bg_dark, highlightthickness=0, **kwargs)
         self.text_widget: Optional[tk.Text] = None
-        self.text_font = None
         self.bookmarks: Set[int] = set()
         self.folds: Set[int] = set()
         self.git_changes: Dict[int, str] = {}
@@ -1538,11 +1880,18 @@ class LineNumberCanvas(tk.Canvas):
         
         total = int(self.text_widget.index("end-1c").split(".")[0])
         digits = max(3, len(str(total)))
-        width = int((digits * 10 + 30) * s)
+        
+        # Get current font size from settings (matches text widget)
+        font_size = self.settings.font_size
+        
+        # Calculate width based on font size and digit count
+        char_width = max(8, font_size * 0.6)  # Approximate character width
+        width = int((digits * char_width + 30) * s)
         if self.winfo_reqwidth() != width:
             self.configure(width=width)
-            
-        font = self.text_font or tkfont.Font(family=self.settings.font_family, size=int(self.settings.font_size * s))
+        
+        # Create font matching the text widget's current font
+        font = tkfont.Font(family=self.settings.font_family, size=font_size)
         
         for line in range(first_line, last_line + 1):
             try:
@@ -1565,7 +1914,7 @@ class LineNumberCanvas(tk.Canvas):
                 if line in self.bookmarks:
                     self.create_oval(int(16*s), y + int(2*s), int(24*s), y + int(14*s), fill=THEME.accent_primary, outline="")
                     
-                # Line number
+                # Line number - use same font size as text widget
                 self.create_text(width - int(10*s), y, text=str(line), fill=THEME.text_muted, font=font, anchor="ne")
             except Exception:
                 pass
@@ -2209,8 +2558,7 @@ class Ribbon(ctk.CTkFrame):
         self.active_tab = None
         self.pinned = settings.ribbon_pinned
         self.collapsed = not self.pinned  # If not pinned, start collapsed
-        self._hover_active = False
-        self._hide_timer = None
+        self._mouse_check_id = None  # For periodic mouse checking
         self._create()
         
     def _create(self):
@@ -2238,26 +2586,6 @@ class Ribbon(ctk.CTkFrame):
         if not self.collapsed:
             self.content_frame.pack(fill="x")
         
-        # Bind hover events to tab_bar (always visible)
-        self.tab_bar.bind("<Enter>", lambda e: self._on_enter(e))
-        self.tab_bar.bind("<Leave>", lambda e: self._on_leave(e))
-        self.content_frame.bind("<Enter>", lambda e: self._on_enter(e))
-        self.content_frame.bind("<Leave>", lambda e: self._on_leave(e))
-        
-        # Bind to self as well
-        self.bind("<Enter>", lambda e: self._on_enter(e))
-        self.bind("<Leave>", lambda e: self._on_leave(e))
-        
-    def _bind_hover_recursive(self, widget):
-        """Bind hover events to widget and all children"""
-        try:
-            widget.bind("<Enter>", lambda e: self._on_enter(e), add=True)
-            widget.bind("<Leave>", lambda e: self._on_leave(e), add=True)
-            for child in widget.winfo_children():
-                self._bind_hover_recursive(child)
-        except Exception:
-            pass
-        
     def add_tab(self, name: str) -> RibbonTab:
         s = self.settings.ui_scale
         btn = ctk.CTkButton(self.tab_btn_frame, text=name, width=int(70*s), height=int(26*s),
@@ -2266,66 +2594,63 @@ class Ribbon(ctk.CTkFrame):
                            command=lambda n=name: self._on_tab_click(n))
         btn.pack(side="left", padx=int(1*s), pady=int(2*s))
         btn.bind("<Double-1>", lambda e: self._toggle_pin())
-        btn.bind("<Enter>", lambda e: self._on_enter(e), add=True)
-        btn.bind("<Leave>", lambda e: self._on_leave(e), add=True)
         self.tab_buttons[name] = btn
         
         tab = RibbonTab(self.content_frame, self.settings)
         self.tabs[name] = tab
         
-        # Bind hover to tab content
-        self._bind_hover_recursive(tab)
-        
         if self.active_tab is None:
-            self.show_tab(name)
+            self.active_tab = name  # Set active but don't show yet if collapsed
+            if not self.collapsed:
+                self.show_tab(name)
         return tab
     
-    def _on_enter(self, event=None):
-        """Mouse entered ribbon area - show if not pinned"""
-        self._hover_active = True
-        # Cancel any pending hide
-        if self._hide_timer:
-            self.after_cancel(self._hide_timer)
-            self._hide_timer = None
-        
-        # Expand ribbon if collapsed
-        if self.collapsed:
-            self._expand()
+    def _start_mouse_check(self):
+        """Start periodic mouse position checking"""
+        if self._mouse_check_id:
+            return  # Already running
+        self._check_mouse_position()
     
-    def _on_leave(self, event=None):
-        """Mouse left ribbon area - schedule hide if not pinned"""
-        # Check if mouse is still within ribbon bounds
-        try:
-            x, y = self.winfo_pointerxy()
-            rx, ry = self.winfo_rootx(), self.winfo_rooty()
-            rw, rh = self.winfo_width(), self.winfo_height()
+    def _stop_mouse_check(self):
+        """Stop periodic mouse position checking"""
+        if self._mouse_check_id:
+            self.after_cancel(self._mouse_check_id)
+            self._mouse_check_id = None
+    
+    def _check_mouse_position(self):
+        """Check if mouse is still over ribbon, collapse if not"""
+        if self.pinned or self.collapsed:
+            self._mouse_check_id = None
+            return
             
-            # If mouse is still inside ribbon, don't hide
-            if rx <= x <= rx + rw and ry <= y <= ry + rh:
+        try:
+            # Get mouse position
+            x, y = self.winfo_pointerxy()
+            
+            # Get ribbon bounds (entire frame including content)
+            rx = self.winfo_rootx()
+            ry = self.winfo_rooty()
+            rw = self.winfo_width()
+            rh = self.winfo_height()
+            
+            # Check if mouse is outside ribbon
+            if not (rx <= x <= rx + rw and ry <= y <= ry + rh):
+                self._collapse()
+                self._mouse_check_id = None
                 return
         except Exception:
             pass
         
-        self._hover_active = False
-        
-        # Only auto-hide if not pinned
-        if not self.pinned:
-            # Quick hide - 100ms delay to prevent flicker but feel responsive
-            if self._hide_timer:
-                self.after_cancel(self._hide_timer)
-            self._hide_timer = self.after(100, self._check_and_hide)
-    
-    def _check_and_hide(self):
-        """Check if we should hide after delay"""
-        self._hide_timer = None
-        if not self._hover_active and not self.pinned and not self.collapsed:
-            self._collapse()
+        # Schedule next check (100ms interval)
+        self._mouse_check_id = self.after(100, self._check_mouse_position)
         
     def _on_tab_click(self, name: str):
         """Handle tab click - show tab and expand if collapsed"""
         if self.collapsed:
             self._expand()
         self.show_tab(name)
+        # Start checking mouse position
+        self._start_mouse_check()
         
     def show_tab(self, name: str):
         if name not in self.tabs:
@@ -2345,13 +2670,17 @@ class Ribbon(ctk.CTkFrame):
         self.content_frame.pack(fill="x")
         if self.active_tab:
             self.show_tab(self.active_tab)
+        # Start mouse checking when expanded
+        self._start_mouse_check()
     
     def _collapse(self):
         """Collapse the ribbon content"""
-        if self.collapsed:
+        if self.collapsed or self.pinned:
             return
         self.collapsed = True
         self.content_frame.pack_forget()
+        # Stop mouse checking when collapsed
+        self._stop_mouse_check()
                 
     def _toggle_pin(self):
         """Toggle pin state - when pinned, ribbon stays open"""
@@ -2363,9 +2692,13 @@ class Ribbon(ctk.CTkFrame):
             # Expand if collapsed
             if self.collapsed:
                 self._expand()
+            # Stop mouse checking when pinned
+            self._stop_mouse_check()
         else:
             self.pin_btn.configure(text="📍", fg_color="transparent")
-            # Will auto-collapse on mouse leave
+            # Start mouse checking if expanded
+            if not self.collapsed:
+                self._start_mouse_check()
             
     def auto_hide(self):
         """Called when focus leaves ribbon - collapse if not pinned"""
@@ -2457,6 +2790,29 @@ class WelcomeScreen(ctk.CTkFrame):
 # =============================================================================
 # SETTINGS DIALOG
 # =============================================================================
+
+def create_dialog(parent, title: str, width: int, height: int, settings: EditorSettings) -> ctk.CTkToplevel:
+    """Create a standard dialog window"""
+    s = settings.ui_scale
+    w, h = int(width * s), int(height * s)
+    
+    dialog = ctk.CTkToplevel(parent)
+    dialog.title(title)
+    dialog.configure(fg_color=THEME.bg_dark)
+    dialog.transient(parent)
+    dialog.grab_set()
+    dialog.resizable(True, True)
+    
+    # Center on parent
+    dialog.update_idletasks()
+    px = parent.winfo_x() + (parent.winfo_width() - w) // 2
+    py = parent.winfo_y() + (parent.winfo_height() - h) // 2
+    dialog.geometry(f"{w}x{h}+{max(0, px)}+{max(0, py)}")
+    
+    dialog.after(100, lambda: set_dark_title_bar(dialog))
+    
+    return dialog
+
 
 class SettingsDialog(ctk.CTkToplevel):
     def __init__(self, master, settings: EditorSettings, on_save: Callable):
@@ -3007,30 +3363,66 @@ class Mattpad(ctk.CTk):
             self.main_paned.add(self.clipboard_frame, width=int(self.settings.clipboard_panel_width*s),
                                minsize=int(150*s), sticky="nsew")
         
-        # Bind sash movement to save sizes
-        self.main_paned.bind("<ButtonRelease-1>", lambda e: self._on_paned_resize(e))
+        # Tab bar - uses theme colors
+        self.tab_bar_bg = THEME.tab_bar_bg
+        self.tab_active_color = THEME.tab_active
+        self.tab_inactive_color = THEME.tab_inactive
+        self.tab_hover_color = THEME.tab_hover
+        self.tab_text_active = THEME.tab_text_active
+        self.tab_text_inactive = THEME.tab_text_inactive
         
-        # Tab bar
-        self.tab_bar = ctk.CTkFrame(self.editor_container, fg_color=THEME.tab_inactive, 
-                                   height=int(34*s), corner_radius=0)
+        self.tab_bar = ctk.CTkFrame(self.editor_container, fg_color=self.tab_bar_bg, 
+                                   height=int(38*s), corner_radius=0)
         self.tab_bar.pack(fill="x")
         self.tab_bar.pack_propagate(False)
         
+        # Scrollable tab container
+        self.tab_scroll_offset = 0
         self.tab_container = ctk.CTkFrame(self.tab_bar, fg_color="transparent")
         self.tab_container.pack(side="left", fill="both", expand=True)
         
+        # Clip frame for scrolling tabs
+        self.tab_clip_frame = ctk.CTkFrame(self.tab_container, fg_color="transparent")
+        self.tab_clip_frame.pack(side="left", fill="both", expand=True)
+        self.tab_clip_frame.pack_propagate(False)
+        
+        # Inner frame that holds actual tabs (can be wider than clip frame)
+        self.tab_inner_frame = ctk.CTkFrame(self.tab_clip_frame, fg_color="transparent")
+        self.tab_inner_frame.place(x=0, y=0, relheight=1.0)
+        
+        # Bind mousewheel to tab container for scrolling
+        self.tab_container.bind("<MouseWheel>", self._on_tab_scroll)
+        self.tab_clip_frame.bind("<MouseWheel>", self._on_tab_scroll)
+        self.tab_inner_frame.bind("<MouseWheel>", self._on_tab_scroll)
+        self.tab_bar.bind("<MouseWheel>", self._on_tab_scroll)
+        
         # Click empty space in tab bar to create new tab
         self.tab_container.bind("<Button-1>", lambda e: self._new_file())
+        self.tab_clip_frame.bind("<Button-1>", lambda e: self._new_file())
+        self.tab_inner_frame.bind("<Button-1>", lambda e: self._new_file())
         self.tab_bar.bind("<Button-1>", lambda e: self._tab_bar_click(e))
         
+        # Tab list dropdown button (shows all open tabs)
+        self.tab_list_btn = ctk.CTkButton(self.tab_bar, text="▼", width=int(28*s), height=int(28*s),
+                                         fg_color="transparent",
+                                         hover_color=self.tab_hover_color,
+                                         text_color=self.tab_text_inactive,
+                                         font=ctk.CTkFont(size=int(12*s)), command=self._show_tab_list)
+        self.tab_list_btn.pack(side="right", padx=int(2*s))
+        
         # Recent files button
-        self.recent_btn = ctk.CTkButton(self.tab_bar, text="📋", width=int(30*s), height=int(26*s),
-                                       fg_color="transparent", hover_color=THEME.bg_hover,
+        self.recent_btn = ctk.CTkButton(self.tab_bar, text="📋", width=int(30*s), height=int(28*s),
+                                       fg_color="transparent",
+                                       hover_color=self.tab_hover_color,
+                                       text_color=self.tab_text_inactive,
                                        font=ctk.CTkFont(size=int(14*s)), command=self._show_recent_files)
         self.recent_btn.pack(side="right", padx=int(2*s))
         
-        ctk.CTkButton(self.tab_bar, text="+", width=int(30*s), height=int(26*s),
-                     fg_color="transparent", hover_color=THEME.bg_hover,
+        # New tab button
+        ctk.CTkButton(self.tab_bar, text="+", width=int(30*s), height=int(28*s),
+                     fg_color="transparent",
+                     hover_color=self.tab_hover_color,
+                     text_color=self.tab_text_inactive,
                      font=ctk.CTkFont(size=int(16*s)), command=self._new_file).pack(side="right", padx=int(4*s))
         
         # Find bar
@@ -3190,6 +3582,18 @@ class Mattpad(ctk.CTk):
         self._session_save_loop()
         self._auto_save_loop()
         self._file_check_loop()
+        # Show spellcheck status after short delay
+        self.after(500, self._show_spellcheck_status)
+    
+    def _show_spellcheck_status(self):
+        """Show spellcheck initialization status"""
+        if self.spellcheck.enabled:
+            if self.spellcheck.spell:
+                self.toast.show("Spellcheck: pyspellchecker ready", "success", duration=2000)
+            elif len(self.spellcheck._word_set) > 10000:
+                self.toast.show(f"Spellcheck: {len(self.spellcheck._word_set):,} words loaded", "success", duration=2000)
+            else:
+                self.toast.show(f"Spellcheck: using {len(self.spellcheck._word_set)} word dictionary", "info", duration=2000)
         
     def _session_save_loop(self):
         self._save_session()
@@ -3336,42 +3740,70 @@ class Mattpad(ctk.CTk):
         if tab_id not in self.tab_order:
             self.tab_order.append(tab_id)
         
-        # Tab button
-        tab_frame = ctk.CTkFrame(self.tab_container, fg_color=THEME.tab_inactive, corner_radius=0, height=int(32*s))
-        tab_frame.pack(side="left", padx=1)
+        # Tab button - uses theme colors
+        tab_frame = ctk.CTkFrame(self.tab_inner_frame, fg_color=self.tab_inactive_color, 
+                                corner_radius=4, height=int(32*s))
+        tab_frame.pack(side="left", padx=1, pady=(int(3*s), 0))
         tab_frame.pack_propagate(False)
         
         icon = get_file_icon(filepath) if filepath else "📄"
         name = os.path.basename(filepath) if filepath else "Untitled"
         
-        tab_btn = ctk.CTkButton(tab_frame, text=f"{icon} {name}", fg_color="transparent",
-                               hover_color=THEME.bg_hover, font=ctk.CTkFont(size=int(11*s)),
+        # Store colors on tab_frame for later updates
+        tab_frame.active_color = self.tab_active_color
+        tab_frame.inactive_color = self.tab_inactive_color
+        tab_frame.text_active = self.tab_text_active
+        tab_frame.text_inactive = self.tab_text_inactive
+        tab_frame.hover_color = self.tab_hover_color
+        
+        # Inner container for vertical centering
+        tab_inner = ctk.CTkFrame(tab_frame, fg_color="transparent")
+        tab_inner.pack(expand=True, fill="both", padx=int(2*s), pady=int(2*s))
+        
+        tab_btn = ctk.CTkButton(tab_inner, text=f"{icon} {name}", 
+                               fg_color="transparent",
+                               hover_color=self.tab_hover_color, 
+                               text_color=self.tab_text_inactive,
+                               font=ctk.CTkFont(size=int(11*s)),
                                command=lambda t=tab_id: self._switch_tab(t), anchor="w",
-                               height=int(28*s), corner_radius=0)
-        tab_btn.pack(side="left", fill="both", expand=True)
+                               height=int(26*s), corner_radius=4)
+        tab_btn.pack(side="left", fill="y")
         
-        modified_label = ctk.CTkLabel(tab_frame, text="", width=int(12*s), text_color=THEME.tab_modified,
-                                     font=ctk.CTkFont(size=int(14*s)))
-        modified_label.pack(side="left")
+        close_btn = ctk.CTkButton(tab_inner, text="×", width=int(20*s), height=int(20*s),
+                                 fg_color="transparent", hover_color=THEME.tab_close_hover,
+                                 text_color=self.tab_text_inactive,
+                                 font=ctk.CTkFont(size=int(12*s)), command=lambda t=tab_id: self._close_tab(t))
+        close_btn.pack(side="right", padx=(int(4*s), 0))
         
-        close_btn = ctk.CTkButton(tab_frame, text="×", width=int(24*s), height=int(24*s),
-                                 fg_color="transparent", hover_color=THEME.bg_hover,
-                                 font=ctk.CTkFont(size=int(14*s)), command=lambda t=tab_id: self._close_tab(t))
-        close_btn.pack(side="right", padx=int(2*s))
+        modified_label = ctk.CTkLabel(tab_inner, text="", width=int(10*s), 
+                                     text_color=THEME.tab_modified,
+                                     font=ctk.CTkFont(size=int(12*s)))
+        modified_label.pack(side="right")
         
         tab_frame.tab_btn = tab_btn
         tab_frame.modified_label = modified_label
         tab_frame.close_btn = close_btn
+        tab_frame.tab_inner = tab_inner
         tab_data.tab_frame = tab_frame
+        
+        # Bind mousewheel for scrolling tabs
+        tab_frame.bind("<MouseWheel>", self._on_tab_scroll)
+        tab_inner.bind("<MouseWheel>", self._on_tab_scroll)
+        tab_btn.bind("<MouseWheel>", self._on_tab_scroll)
+        close_btn.bind("<MouseWheel>", self._on_tab_scroll)
         
         # Middle-click to close tab
         tab_frame.bind("<Button-2>", lambda e, t=tab_id: self._close_tab(t))
+        tab_inner.bind("<Button-2>", lambda e, t=tab_id: self._close_tab(t))
         tab_btn.bind("<Button-2>", lambda e, t=tab_id: self._close_tab(t))
         
         # Drag to reorder tabs
         tab_frame.bind("<ButtonPress-1>", lambda e, t=tab_id: self._start_tab_drag(e, t))
         tab_frame.bind("<B1-Motion>", lambda e, t=tab_id: self._drag_tab(e, t))
         tab_frame.bind("<ButtonRelease-1>", lambda e, t=tab_id: self._end_tab_drag(e, t))
+        tab_inner.bind("<ButtonPress-1>", lambda e, t=tab_id: self._start_tab_drag(e, t))
+        tab_inner.bind("<B1-Motion>", lambda e, t=tab_id: self._drag_tab(e, t))
+        tab_inner.bind("<ButtonRelease-1>", lambda e, t=tab_id: self._end_tab_drag(e, t))
         tab_btn.bind("<ButtonPress-1>", lambda e, t=tab_id: self._start_tab_drag(e, t))
         tab_btn.bind("<B1-Motion>", lambda e, t=tab_id: self._drag_tab(e, t))
         tab_btn.bind("<ButtonRelease-1>", lambda e, t=tab_id: self._end_tab_drag(e, t))
@@ -3457,8 +3889,8 @@ class Mattpad(ctk.CTk):
         text.bind("<B2-Motion>", lambda e, t=tab_id: self._auto_scroll_motion(e, t))
         text.bind("<ButtonRelease-2>", lambda e, t=tab_id: self._stop_auto_scroll(t))
         
-        # Configure spellcheck tag
-        text.tag_configure("misspelled", underline=True, underlinefg=THEME.misspelled)
+        # Configure spellcheck tag - red underline + subtle highlight
+        text.tag_configure("misspelled", underline=True)
         text.tag_configure("bracket_match", background=THEME.bracket_match)
         text.tag_configure("search_highlight", background=THEME.search_highlight)
         text.tag_configure("current_line", background=THEME.current_line)
@@ -3472,15 +3904,26 @@ class Mattpad(ctk.CTk):
         for tid, frame in self.editor_frames.items():
             frame.pack_forget()
             if tid in self.tabs and self.tabs[tid].tab_frame:
-                self.tabs[tid].tab_frame.configure(fg_color=THEME.tab_inactive)
+                tab_frame = self.tabs[tid].tab_frame
+                # Set inactive colors
+                tab_frame.configure(fg_color=tab_frame.inactive_color)
+                tab_frame.tab_btn.configure(text_color=tab_frame.text_inactive)
+                tab_frame.close_btn.configure(text_color=tab_frame.text_inactive)
         self.editor_frames[tab_id].pack(fill="both", expand=True)
         if self.tabs[tab_id].tab_frame:
-            self.tabs[tab_id].tab_frame.configure(fg_color=THEME.tab_active)
+            tab_frame = self.tabs[tab_id].tab_frame
+            # Set active colors
+            tab_frame.configure(fg_color=tab_frame.active_color)
+            tab_frame.tab_btn.configure(text_color=tab_frame.text_active)
+            tab_frame.close_btn.configure(text_color=THEME.text_muted)
         self.current_tab = tab_id
         self.text_widgets[tab_id].focus_set()
         self._update_statusbar()
         self._update_title()
-        self.debouncer.debounce("highlight", lambda: self._highlight_current())
+        # Scroll tab into view if needed
+        self._scroll_tab_into_view(tab_id)
+        # Run highlighting immediately (including spellcheck)
+        self.after(100, self._highlight_current)
         
     def _redraw_tab_components(self, tab_id: str):
         """Redraw line numbers, minimap, and syntax highlighting for a tab"""
@@ -3582,8 +4025,94 @@ class Mattpad(ctk.CTk):
     def _tab_bar_click(self, event):
         """Handle click on tab bar (not on a tab)"""
         widget = event.widget.winfo_containing(event.x_root, event.y_root)
-        if widget == self.tab_bar or widget == self.tab_container:
+        if widget in (self.tab_bar, self.tab_container, self.tab_clip_frame, self.tab_inner_frame):
             self._new_file()
+    
+    def _on_tab_scroll(self, event):
+        """Handle mousewheel scroll on tab bar to navigate tabs"""
+        if not self.tabs:
+            return "break"
+        
+        # Get list of tab IDs in order
+        tab_ids = list(self.tabs.keys())
+        if not tab_ids:
+            return "break"
+        
+        # Find current tab index
+        current_idx = tab_ids.index(self.current_tab) if self.current_tab in tab_ids else 0
+        
+        # Scroll direction: positive delta = scroll up = previous tab
+        if event.delta > 0:
+            new_idx = max(0, current_idx - 1)
+        else:
+            new_idx = min(len(tab_ids) - 1, current_idx + 1)
+        
+        # Switch to new tab
+        if new_idx != current_idx:
+            self._switch_tab(tab_ids[new_idx])
+        
+        return "break"
+    
+    def _scroll_tab_into_view(self, tab_id: str):
+        """Scroll the tab bar so the specified tab is visible"""
+        if tab_id not in self.tabs or not self.tabs[tab_id].tab_frame:
+            return
+        
+        try:
+            tab_frame = self.tabs[tab_id].tab_frame
+            clip_width = self.tab_clip_frame.winfo_width()
+            tab_x = tab_frame.winfo_x()
+            tab_width = tab_frame.winfo_width()
+            
+            # Calculate scroll needed
+            current_x = self.tab_inner_frame.winfo_x()
+            
+            # If tab is to the right of visible area
+            if tab_x + tab_width > clip_width - current_x:
+                new_x = clip_width - tab_x - tab_width - 20
+                self.tab_inner_frame.place(x=new_x)
+            # If tab is to the left of visible area
+            elif tab_x + current_x < 0:
+                new_x = -tab_x + 10
+                self.tab_inner_frame.place(x=min(0, new_x))
+        except Exception:
+            pass
+    
+    def _show_tab_list(self):
+        """Show dropdown list of all open tabs"""
+        if not self.tabs:
+            return
+        
+        menu = tk.Menu(self.tab_list_btn, tearoff=0, bg=THEME.bg_medium, fg=THEME.text_primary)
+        
+        for tab_id, tab_data in self.tabs.items():
+            # Get tab name
+            if tab_data.filepath:
+                name = os.path.basename(tab_data.filepath)
+                icon = get_file_icon(tab_data.filepath)
+            else:
+                name = "Untitled"
+                icon = "📄"
+            
+            # Add modified indicator
+            if tab_data.modified:
+                name = f"● {name}"
+            
+            # Mark current tab
+            prefix = "→ " if tab_id == self.current_tab else "   "
+            
+            menu.add_command(
+                label=f"{prefix}{icon} {name}",
+                command=lambda t=tab_id: self._switch_tab(t)
+            )
+        
+        # Show at button location
+        try:
+            x = self.tab_list_btn.winfo_rootx()
+            y = self.tab_list_btn.winfo_rooty() + self.tab_list_btn.winfo_height()
+            menu.tk_popup(x, y)
+        except Exception:
+            pass
     
     # Tab drag state
     _drag_start_x = 0
@@ -3641,11 +4170,12 @@ class Mattpad(ctk.CTk):
         self.tabs = dict(items)
         
         # Repack frames
-        for child in self.tab_container.winfo_children():
+        for child in self.tab_inner_frame.winfo_children():
             child.pack_forget()
+        s = self.settings.ui_scale
         for tid in self.tabs:
             if self.tabs[tid].tab_frame:
-                self.tabs[tid].tab_frame.pack(side="left", padx=1)
+                self.tabs[tid].tab_frame.pack(side="left", padx=1, pady=(int(3*s), 0))
     
     # ==========================================================================
     # FILE OPERATIONS
@@ -4159,9 +4689,12 @@ class Mattpad(ctk.CTk):
         self._apply_font()
     
     def _apply_font(self):
-        """Apply font settings to all editors"""
+        """Apply font settings to all editors and line numbers"""
         for text in self.text_widgets.values():
             text.configure(font=(self.settings.font_family, self.settings.font_size))
+        # Redraw all line numbers with new font size
+        for line_nums in self.line_numbers.values():
+            line_nums.redraw()
         self._update_statusbar()
     
     # ==========================================================================
@@ -4258,6 +4791,16 @@ class Mattpad(ctk.CTk):
         """Toggle spellcheck"""
         self.settings.spellcheck_enabled = self.spell_var.get()
         self.toast.show(f"Spellcheck: {'On' if self.settings.spellcheck_enabled else 'Off'}", "info")
+        
+        # Clear or apply misspelled tags
+        if self.current_tab and self.current_tab in self.text_widgets:
+            text = self.text_widgets[self.current_tab]
+            if not self.settings.spellcheck_enabled:
+                # Remove all misspelled tags
+                text.tag_remove("misspelled", "1.0", "end")
+            else:
+                # Apply spellcheck
+                self._highlight_misspelled()
     
     def _toggle_autoclose(self):
         """Toggle auto-close brackets"""
@@ -4479,6 +5022,58 @@ class Mattpad(ctk.CTk):
         text = self.text_widgets[tab_id]
         
         menu = tk.Menu(text, tearoff=0, bg=THEME.bg_medium, fg=THEME.text_primary)
+        
+        # Check if clicking on a misspelled word
+        try:
+            # Get word at click position
+            click_index = text.index(f"@{event.x},{event.y}")
+            
+            # Get the word under cursor
+            line_start = text.index(f"{click_index} linestart")
+            line_end = text.index(f"{click_index} lineend")
+            line_text = text.get(line_start, line_end)
+            
+            # Find word boundaries
+            col = int(click_index.split('.')[1])
+            
+            # Find word start
+            word_start = col
+            while word_start > 0 and line_text[word_start-1].isalpha():
+                word_start -= 1
+            
+            # Find word end
+            word_end = col
+            while word_end < len(line_text) and line_text[word_end].isalpha():
+                word_end += 1
+            
+            word = line_text[word_start:word_end]
+            
+            # Check if word is misspelled
+            if word and len(word) >= 2 and self.settings.spellcheck_enabled and self.spellcheck.is_misspelled(word):
+                line_num = click_index.split('.')[0]
+                word_start_idx = f"{line_num}.{word_start}"
+                word_end_idx = f"{line_num}.{word_end}"
+                
+                # Get suggestions
+                suggestions = self.spellcheck.get_suggestions(word)
+                
+                if suggestions:
+                    for suggestion in suggestions[:5]:
+                        menu.add_command(
+                            label=suggestion,
+                            command=lambda s=suggestion, ws=word_start_idx, we=word_end_idx: self._replace_word(text, ws, we, s)
+                        )
+                    menu.add_separator()
+                
+                # Add to dictionary option
+                menu.add_command(
+                    label=f"Add '{word}' to dictionary",
+                    command=lambda w=word: self._add_to_dictionary(w)
+                )
+                menu.add_separator()
+        except Exception as e:
+            logger.debug(f"Context menu spell check error: {e}")
+        
         menu.add_command(label="Cut", command=self._cut, accelerator="Ctrl+X")
         menu.add_command(label="Copy", command=self._copy, accelerator="Ctrl+C")
         menu.add_command(label="Paste", command=self._paste, accelerator="Ctrl+V")
@@ -4487,6 +5082,23 @@ class Mattpad(ctk.CTk):
         
         menu.tk_popup(event.x_root, event.y_root)
     
+    def _replace_word(self, text, start_idx: str, end_idx: str, replacement: str):
+        """Replace a word in text widget"""
+        try:
+            text.delete(start_idx, end_idx)
+            text.insert(start_idx, replacement)
+            # Refresh highlighting
+            self.highlight_debouncer.debounce("highlight", lambda: self._highlight_current())
+        except Exception as e:
+            logger.error(f"Failed to replace word: {e}")
+    
+    def _add_to_dictionary(self, word: str):
+        """Add a word to custom dictionary"""
+        self.spellcheck.add_word(word)
+        self.toast.show(f"Added '{word}' to dictionary", "success")
+        # Refresh highlighting
+        self.highlight_debouncer.debounce("highlight", lambda: self._highlight_current())
+    
     # ==========================================================================
     # EVENT HANDLERS
     # ==========================================================================
@@ -4494,7 +5106,11 @@ class Mattpad(ctk.CTk):
     def _on_key_release(self, event, tab_id: str):
         """Handle key release"""
         self._update_statusbar()
-        self.debouncer.debounce("line_numbers", lambda: self._redraw_tab_components(tab_id))
+        # Update line numbers IMMEDIATELY for responsive feel
+        if tab_id in self.line_numbers:
+            self.line_numbers[tab_id].redraw()
+        # Debounce other expensive operations
+        self.debouncer.debounce("minimap", lambda: self._redraw_minimap(tab_id))
         self.highlight_debouncer.debounce("highlight", lambda: self._highlight_current())
     
     def _on_key_press(self, event, tab_id: str):
@@ -4545,8 +5161,12 @@ class Mattpad(ctk.CTk):
             self.debouncer.debounce("brackets", lambda: self._highlight_brackets(tab_id))
     
     def _on_scroll(self, tab_id: str, scrollbar, *args):
-        """Handle scroll"""
+        """Handle scroll - update line numbers immediately"""
         scrollbar.set(*args)
+        # Update line numbers IMMEDIATELY (no debounce)
+        if tab_id in self.line_numbers:
+            self.line_numbers[tab_id].redraw()
+        # Debounce only the minimap (expensive operation)
         self.debouncer.debounce("minimap", lambda: self._redraw_minimap(tab_id))
     
     def _on_mousewheel(self, event, tab_id: str):
@@ -4554,6 +5174,9 @@ class Mattpad(ctk.CTk):
         self._stop_auto_scroll(tab_id)
         if tab_id in self.text_widgets:
             self.text_widgets[tab_id].yview_scroll(int(-event.delta / 120), "units")
+            # Update line numbers immediately
+            if tab_id in self.line_numbers:
+                self.line_numbers[tab_id].redraw()
         return "break"
     
     def _on_ctrl_scroll(self, event, tab_id: str):
@@ -4612,6 +5235,53 @@ class Mattpad(ctk.CTk):
         """Highlight syntax in current editor"""
         if self.current_tab and self.current_tab in self.highlighters:
             self.highlighters[self.current_tab].highlight_visible()
+        # Also do spellcheck
+        if self.settings.spellcheck_enabled:
+            self._highlight_misspelled()
+    
+    def _highlight_misspelled(self):
+        """Highlight misspelled words in current editor"""
+        if not self.current_tab or self.current_tab not in self.text_widgets:
+            return
+        if not self.spellcheck.enabled:
+            return
+            
+        text = self.text_widgets[self.current_tab]
+        
+        try:
+            # Remove old misspelled tags in visible area only
+            first_visible = text.index("@0,0")
+            last_visible = text.index(f"@0,{text.winfo_height()}")
+            text.tag_remove("misspelled", first_visible, last_visible)
+            
+            # Get visible text
+            content = text.get(first_visible, last_visible)
+            
+            # Find all words and check spelling
+            import re
+            word_pattern = re.compile(r'\b[a-zA-Z]{2,}\b')
+            
+            first_line = int(first_visible.split('.')[0])
+            misspelled_count = 0
+            
+            for line_offset, line in enumerate(content.split('\n')):
+                for match in word_pattern.finditer(line):
+                    word = match.group()
+                    if self.spellcheck.is_misspelled(word):
+                        line_num = first_line + line_offset
+                        start_col = match.start()
+                        end_col = match.end()
+                        start_idx = f"{line_num}.{start_col}"
+                        end_idx = f"{line_num}.{end_col}"
+                        text.tag_add("misspelled", start_idx, end_idx)
+                        misspelled_count += 1
+            
+            # Raise misspelled tag to show on top of syntax highlighting
+            if misspelled_count > 0:
+                text.tag_raise("misspelled")
+                        
+        except Exception as e:
+            logger.debug(f"Spellcheck highlight error: {e}")
     
     def _highlight_brackets(self, tab_id: str):
         """Highlight matching brackets"""
